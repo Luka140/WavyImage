@@ -198,7 +198,7 @@ def random_wave_parameters():
 
 
 if __name__ == "__main__":
-    grid, cell_h, cell_w = create_a4_grid_array(rows=20, cols=10, dpi=200)
+    grid, cell_h, cell_w = create_a4_grid_array(rows=100, cols=50, dpi=200)
 
     grid = fill_gradient(grid, 'gray')
 
@@ -222,12 +222,12 @@ if __name__ == "__main__":
 
     grid = apply_lens_blur(
         grid,
-        focus_row=int(rows*0.8),
+        focus_row=int(rows*0.65),
         focus_col=5,
         cell_h=cell_h,
         cell_w=cell_w,
-        max_radius=10,
-        falloff=0.0015,
+        max_radius=5,
+        falloff=0.0005,
         levels=7,
         elliptical=True,
         aspect_ratio=1.3
