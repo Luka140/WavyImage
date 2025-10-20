@@ -47,18 +47,29 @@ def apply_blur_by_depth(canvas, focal_y, max_blur_radius):
     height, width, _ = canvas.shape
     img = Image.fromarray(canvas)
 
-    # Create blur map based on vertical distance from focal point
+    # Create blur map - no blur before focal point, quick falloff after
     y_coords = np.arange(height)
-    blur_amounts = np.abs(y_coords - focal_y * height) / height
-    blur_amounts = np.clip(blur_amounts * max_blur_radius * 2, 0, max_blur_radius)
+    distance_after_focal = np.maximum(0, -y_coords + focal_y * height) / height
+    blur_amounts = np.clip(distance_after_focal * max_blur_radius * 8, 0, max_blur_radius)
 
-    # Apply progressive blur
+    # Pre-compute blurred versions at integer blur levels
+    blurred_images = {}
+    for level in range(0, max_blur_radius + 1):
+        blurred_images[level] = np.array(img.filter(ImageFilter.GaussianBlur(radius=level)))
+
+    # Apply progressive blur with interpolation
     result = np.array(img)
-    for blur_level in range(0, max_blur_radius + 1, 2):
-        mask = (blur_amounts >= blur_level) & (blur_amounts < blur_level + 2)
-        if mask.any():
-            blurred = img.filter(ImageFilter.GaussianBlur(radius=blur_level))
-            result[mask] = np.array(blurred)[mask]
+    for y in range(height):
+        target_blur = blur_amounts[y]
+        lower = int(np.floor(target_blur))
+        upper = int(np.ceil(target_blur))
+
+        if lower == upper:
+            result[y] = blurred_images[lower][y]
+        else:
+            # Blend between two blur levels
+            t = target_blur - lower
+            result[y] = ((1 - t) * blurred_images[lower][y] + t * blurred_images[upper][y]).astype(np.uint8)
 
     print(f"📸 Applied depth blur (focal plane at {focal_y:.1%})")
     return result
@@ -78,11 +89,11 @@ def save_image(canvas, prefix="artwork", directory="figures"):
 
 if __name__ == "__main__":
     # Create canvas with gradient background
-    canvas = create_canvas(dpi=600)
-    canvas = fill_gradient(canvas, start_color=(20, 20, 20), end_color=(255, 255, 195))
+    canvas = create_canvas(dpi=200)
+    canvas = fill_gradient(canvas, start_color=(0, 0, 00), end_color=(128, 231, 254))
 
     # Draw waves with color gradient
-    cmap = cm.get_cmap("magma")
+    cmap = cm.get_cmap("managua")
     for i in np.arange(0, 1, 0.0025):
         color = tuple(int(255 * c) for c in cmap(i)[:3])
         canvas = draw_sine_wave(
@@ -96,6 +107,6 @@ if __name__ == "__main__":
         )
 
     # Apply bokeh effect (focal point at 60% from top)
-    canvas = apply_blur_by_depth(canvas, focal_y=0.85, max_blur_radius=36)
+    canvas = apply_blur_by_depth(canvas, focal_y=0.6, max_blur_radius=30)
 
     save_image(canvas, prefix="sine_wave_bokeh")
